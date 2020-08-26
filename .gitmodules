@@ -1,0 +1,16 @@
+[submodule "FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmodbus"]
+	path = FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmodbus
+	url = https://github.com/dodsonmg/libmodbus.git
+    branch = freertos
+[submodule "FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmacaroons"]
+	path = FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmacaroons
+	url = https://github.com/dodsonmg/libmacaroons.git
+    branch = freertos
+[submodule "FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmodbus_macaroons"]
+	path = FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmodbus_macaroons
+	url = https://github.com/dodsonmg/libmodbus_macaroons.git
+    branch = freertos
+[submodule "FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmodbus_cheri"]
+	path = FreeRTOS/Demo/RISC-V-Generic/modbus_demo/libmodbus_cheri
+	url = https://github.com/dodsonmg/libmodbus_cheri.git
+    branch = freertos
