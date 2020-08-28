@@ -61,6 +61,9 @@ extern void main_compartment_test(void);
 #elif mainDEMO_TYPE == 5
 #pragma message "Demo type 5: TCP/IP peekpoke Test"
 extern void main_peekpoke(void);
+#elif mainDEMO_TYPE == 42
+#pragma message "Demo type 42: Modbus"
+extern void main_modbus(void);
 #else
 #error "Unsupported demo type"
 #endif
@@ -138,6 +141,10 @@ int main(void) {
 #elif mainDEMO_TYPE == 5
   {
     main_peekpoke();
+#elif mainDEMO_TYPE == 42
+  /* run the main_modbus demo */
+  {
+    main_modbus();
   }
 #else
 #error "Unsupported Demo"
