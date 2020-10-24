@@ -267,7 +267,7 @@ ifeq ($(PROG),modbus_baseline)
 	CFLAGS += \
 		-DmainDEMO_TYPE=42 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1
+		-DconfigCUSTOM_HEAP_SIZE=2
 	DEMO_SRC += \
 		$(MODBUS_DEMO_DIR)/main_modbus.c \
 		$(MODBUS_DEMO_DIR)/modbus_server.c \
@@ -281,7 +281,7 @@ ifeq ($(PROG),modbus_baseline_microbenchmark)
 	CFLAGS += \
 		-DmainDEMO_TYPE=42 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1 \
+		-DconfigCUSTOM_HEAP_SIZE=2 \
 		-DNDEBUG=1 \
 		-DMICROBENCHMARK=1
 	DEMO_SRC += \
@@ -299,7 +299,7 @@ ifeq ($(PROG),modbus_cheri_layer)
 		-DmainDEMO_TYPE=42 \
 		-DCHERI_LAYER=1 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1
+		-DconfigCUSTOM_HEAP_SIZE=2
 	DEMO_SRC += \
 		$(MODBUS_DEMO_DIR)/main_modbus.c \
 		$(MODBUS_DEMO_DIR)/modbus_server.c \
@@ -317,7 +317,7 @@ ifeq ($(PROG),modbus_cheri_layer_microbenchmark)
 		-DmainDEMO_TYPE=42 \
 		-DCHERI_LAYER=1 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1 \
+		-DconfigCUSTOM_HEAP_SIZE=2 \
 		-DNDEBUG=1 \
 		-DMICROBENCHMARK=1
 	DEMO_SRC += \
@@ -338,7 +338,7 @@ ifeq ($(PROG),modbus_macaroons_layer)
 		-DmainDEMO_TYPE=42 \
 		-DMACAROONS_LAYER=1 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1
+		-DconfigCUSTOM_HEAP_SIZE=2
 	DEMO_SRC += \
 		$(MODBUS_DEMO_DIR)/main_modbus.c \
 		$(MODBUS_DEMO_DIR)/modbus_server.c \
@@ -358,7 +358,7 @@ ifeq ($(PROG),modbus_macaroons_layer_microbenchmark)
 		-DmainDEMO_TYPE=42 \
 		-DMACAROONS_LAYER=1 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1 \
+		-DconfigCUSTOM_HEAP_SIZE=2 \
 		-DNDEBUG=1 \
 		-DMICROBENCHMARK=1
 	DEMO_SRC += \
@@ -382,7 +382,7 @@ ifeq ($(PROG),modbus_cheri_macaroons_layers)
 		-DMACAROONS_LAYER=1 \
 		-DCHERI_LAYER=1 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1
+		-DconfigCUSTOM_HEAP_SIZE=2
 	DEMO_SRC += \
 		$(MODBUS_DEMO_DIR)/main_modbus.c \
 		$(MODBUS_DEMO_DIR)/modbus_server.c \
@@ -405,7 +405,7 @@ ifeq ($(PROG),modbus_cheri_macaroons_layers_microbenchmark)
 		-DMACAROONS_LAYER=1 \
 		-DCHERI_LAYER=1 \
 		-D__freertos__=1 \
-		-DconfigCUSTOM_HEAP_SIZE=1 \
+		-DconfigCUSTOM_HEAP_SIZE=2 \
 		-DNDEBUG=1 \
 		-DMICROBENCHMARK
 	DEMO_SRC += \
