@@ -65,6 +65,12 @@
 
 /*-----------------------------------------------------------*/
 
+/* The rate at which data is sent from the client to the server.
+ * The 200ms value is converted to ticks using the pdMS_TO_TICKS() macro. */
+#define CLIENT_SEND_FREQUENCY_MS pdMS_TO_TICKS(200)
+
+/*-----------------------------------------------------------*/
+
 /* Helper function for converting to libmodbus formats */
 static int convert_string_req(const char *req_string, uint8_t *req);
 
@@ -73,19 +79,9 @@ static int convert_string_req(const char *req_string, uint8_t *req);
 /* The structure holding connection information. */
 static modbus_t *ctx = NULL;
 
-#if defined(MACAROONS_LAYER)
-/* The queue used to communicate Macaroons from client to server. */
-extern QueueHandle_t xQueueClientServerMacaroons;
-
-/* The queue used to communicate Macaroons from server to client. */
-extern QueueHandle_t xQueueServerClientMacaroons;
-#endif
-
 /*-----------------------------------------------------------*/
 
-void vClientInitialization(char *ip, int port,
-                             QueueHandle_t xQueueClientServer,
-                             QueueHandle_t xQueueServerClient)
+void vClientInitialization(char *ip, int port)
 {
   /* initialise the connection */
   ctx = modbus_new_tcp(ip, port);
@@ -102,10 +98,6 @@ void vClientInitialization(char *ip, int port,
 #else
   modbus_set_debug(ctx, pdTRUE);
 #endif
-
-  modbus_set_request_queue(ctx, xQueueClientServer);
-  modbus_set_response_queue(ctx, xQueueServerClient);
-  modbus_set_server(ctx, pdFALSE);
 
 #if defined(MACAROONS_LAYER)
   int rc;
@@ -128,18 +120,7 @@ void vClientInitialization(char *ip, int port,
 
 void vClientTask(void *pvParameters)
 {
-  /* structure to hold the request and request length */
-  modbus_queue_msg_t *pxRequest = (modbus_queue_msg_t *)pvPortMalloc(sizeof(modbus_queue_msg_t));
-  pxRequest->msg = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-  memset(pxRequest->msg, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-  pxRequest->msg_length = 0;
-
-  /* structure to hold the response and the response length */
-  modbus_queue_msg_t *pxResponse = (modbus_queue_msg_t *)pvPortMalloc(sizeof(modbus_queue_msg_t));
-  pxResponse->msg = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-  memset(pxResponse->msg, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-  pxResponse->msg_length = 0;
-
+  FreeRTOS_debug_printf( ("Enter client task\n") );
   TickType_t xNextWakeTime;
 
   /* libmodbus variables */
@@ -154,6 +135,13 @@ void vClientTask(void *pvParameters)
 
   /* Initialise xNextWakeTime - this only needs to be done once. */
   xNextWakeTime = xTaskGetTickCount();
+
+  /* Connect to the modbus server */
+  if(modbus_connect(ctx) == -1) {
+      fprintf(stderr, "Connection failed\n");
+      modbus_free(ctx);
+      _exit(0);
+  }
 
   /* Allocate and initialize the memory to store the bits */
   nb_points = (UT_BITS_NB > UT_INPUT_BITS_NB) ? UT_BITS_NB : UT_INPUT_BITS_NB;
@@ -184,7 +172,7 @@ void vClientTask(void *pvParameters)
 
   rc = modbus_write_string(ctx, tab_rp_string, nb_chars);
   configASSERT(rc != -1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* READ_STRING */
 #ifndef NDEBUG
@@ -195,7 +183,7 @@ void vClientTask(void *pvParameters)
   memset(tab_rp_string, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
   rc = modbus_read_string(ctx, tab_rp_string);
   configASSERT(rc != -1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /************
    * COIL TESTS
@@ -213,7 +201,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
 #endif
   configASSERT(rc == 1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* READ_SINGLE_COIL */
 #ifndef NDEBUG
@@ -227,7 +215,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
 #endif
   configASSERT(rc == 1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* WRITE_MULTIPLE_COILS */
 #ifndef NDEBUG
@@ -245,7 +233,7 @@ void vClientTask(void *pvParameters)
 #endif
   }
   configASSERT(rc == UT_BITS_NB);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* READ_MULTIPLE_COILS */
 #ifndef NDEBUG
@@ -259,7 +247,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
 #endif
   configASSERT(rc == UT_BITS_NB);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /**********************
    * DISCRETE INPUT TESTS
@@ -292,7 +280,7 @@ void vClientTask(void *pvParameters)
         idx++;
     }
   }
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /************************
    * HOLDING REGISTER TESTS
@@ -310,7 +298,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x1234);
 #endif
   configASSERT(rc == 1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* READ_SINGLE_REGISTER */
 #ifndef NDEBUG
@@ -325,7 +313,7 @@ void vClientTask(void *pvParameters)
 #endif
   configASSERT(rc == 1);
   configASSERT(tab_rp_registers[0] == 0x1234);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* WRITE_MULTIPLE_REGISTERS */
 #ifndef NDEBUG
@@ -339,7 +327,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_write_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
 #endif
   configASSERT(rc == UT_REGISTERS_NB);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* READ_MULTIPLE_REGISTERS */
 #ifndef NDEBUG
@@ -356,7 +344,7 @@ void vClientTask(void *pvParameters)
   for (int i=0; i < UT_REGISTERS_NB; i++) {
       configASSERT(tab_rp_registers[i] == UT_REGISTERS_TAB[i]);
   }
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* WRITE_AND_READ_REGISTERS */
 #ifndef NDEBUG
@@ -390,7 +378,7 @@ void vClientTask(void *pvParameters)
   {
         configASSERT(tab_rp_registers[i] == 0);
   }
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /**********************
    * INPUT REGISTER TESTS
@@ -414,7 +402,7 @@ void vClientTask(void *pvParameters)
   {
     configASSERT(tab_rp_registers[i] == UT_INPUT_REGISTERS_TAB[i]);
   }
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /*****************************
    * HOLDING REGISTER MASK TESTS
@@ -432,7 +420,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
 #endif
   configASSERT(rc == 1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* MASK_WRITE_SINGLE_REGISTER */
 #ifndef NDEBUG
@@ -446,7 +434,7 @@ void vClientTask(void *pvParameters)
   rc = modbus_mask_write_register(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
 #endif
   configASSERT(rc != -1);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
   /* READ_SINGLE_REGISTER */
 #ifndef NDEBUG
@@ -461,7 +449,7 @@ void vClientTask(void *pvParameters)
 #endif
   configASSERT(rc == 1);
   configASSERT(tab_rp_registers[0] == 0x17);
-  vTaskDelayUntil(&xNextWakeTime, mainQUEUE_SEND_FREQUENCY_MS);
+  vTaskDelayUntil(&xNextWakeTime, CLIENT_SEND_FREQUENCY_MS);
 
 #if defined(MICROBENCHMARK)
   /* print microbenchmark samples to stdout */

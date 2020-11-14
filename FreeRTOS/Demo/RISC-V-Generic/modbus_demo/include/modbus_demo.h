@@ -22,7 +22,8 @@
 
 /* Priorities used by the tasks. */
 #define mainCLIENT_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define mainSERVER_TASK_PRIORITY (tskIDLE_PRIORITY + 2)
+#define mainSERVER_TASK_PRIORITY (tskIDLE_PRIORITY)
+/* #define mainSERVER_TASK_PRIORITY (tskIDLE_PRIORITY + 1) */
 
 /* The maximum number items the queue can hold.  The priority of the receiving
 task is above the priority of the sending task, so the receiving task will
@@ -32,13 +33,16 @@ it at any time, and even with a queue length of 1, the sending task will never
 find the queue full. */
 #define mainQUEUE_LENGTH (1)
 
-/* The rate at which data is sent to the queue.  The 200ms value is converted
-to ticks using the pdMS_TO_TICKS() macro. */
-#define mainQUEUE_SEND_FREQUENCY_MS pdMS_TO_TICKS(200)
-
 /******************
  * TYPE DEFINITIONS
  *****************/
+
+/* structure to hold queue messages (requests and responses) */
+typedef struct _queue_msg_t
+{
+    int msg_length;
+    uint8_t *msg;
+} queue_msg_t;
 
 /******************
  * HELPER FUNCTIONS

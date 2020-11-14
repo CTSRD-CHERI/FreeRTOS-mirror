@@ -70,10 +70,21 @@
 
 /*-----------------------------------------------------------*/
 
-static void prvCriticalSectionTask(void *pvParameters);
+/*
+ * Created by the connection listening task to handle a single connection.
+ */
+static void prvServerConnectionInstance(void *pvParameters);
 
+/*
+ * Called by the server connetion task.  Queues data for critical section task
+ */
 static int prvCriticalSectionWrapper(const uint8_t *req, const int req_length,
         uint8_t *rsp, int *rsp_length);
+
+/*
+ * Created by the server connection task to handle a single connection.
+ */
+static void prvCriticalSectionTask(void *pvParameters);
 
 /*-----------------------------------------------------------*/
 
@@ -89,19 +100,9 @@ QueueHandle_t xQueueRequest;
 /* The queue used to send responses from prvCriticalSectionTask */
 QueueHandle_t xQueueResponse;
 
-#if defined(MACAROONS_LAYER)
-/* The queue used to communicate Macaroons from client to server. */
-extern QueueHandle_t xQueueClientServerMacaroons;
-
-/* The queue used to communicate Macaroons from server to client. */
-extern QueueHandle_t xQueueServerClientMacaroons;
-#endif
-
 /*-----------------------------------------------------------*/
 
-void vServerInitialization(char *ip, int port,
-                             QueueHandle_t xQueueClientServer,
-                             QueueHandle_t xQueueServerClient)
+void vServerInitialization(char *ip, int port)
 {
   /* initialise the connection */
   ctx = modbus_new_tcp(ip, port);
@@ -118,11 +119,6 @@ void vServerInitialization(char *ip, int port,
 #else
   modbus_set_debug(ctx, pdTRUE);
 #endif
-
-  /* initialise modbus queues and set the server state */
-  modbus_set_request_queue(ctx, xQueueClientServer);
-  modbus_set_response_queue(ctx, xQueueServerClient);
-  modbus_set_server(ctx, pdTRUE);
 
 /* initialise state (mb_mapping) */
 #if defined(CHERI_LAYER) && !defined(CHERI_LAYER_STUBS)
@@ -184,10 +180,10 @@ void vServerInitialization(char *ip, int port,
 #endif
 
   /* Initialise queues for comms with prvCriticalSectionTask */
-  xQueueRequest = xQueueCreate(mainQUEUE_LENGTH, sizeof(modbus_queue_msg_t *));
+  xQueueRequest = xQueueCreate(mainQUEUE_LENGTH, sizeof(queue_msg_t *));
   configASSERT(xQueueRequest != NULL);
 
-  xQueueResponse = xQueueCreate(mainQUEUE_LENGTH, sizeof(modbus_queue_msg_t *));
+  xQueueResponse = xQueueCreate(mainQUEUE_LENGTH, sizeof(queue_msg_t *));
   configASSERT(xQueueResponse != NULL);
 }
 
@@ -201,77 +197,113 @@ void vServerTask(void *pvParameters)
 
   int rc;
   BaseType_t xReturned;
-  char *pcModbusFunctionName;
+  Socket_t s;
 
   /* Remove compiler warning about unused parameter. */
   (void)pvParameters;
 
-  /* variables for comms with libmodbus */
-  uint8_t *req = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-  int req_length = 0;
-  uint8_t *rsp = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
-  int rsp_length = 0;
+  /* listen and accept client connection */
+  s = modbus_tcp_listen(ctx, 1);
+  configASSERT(s != NULL);
 
-  /* variables for comms with prvCriticalSectionTask */
-  modbus_queue_msg_t *pxQueueReq = (modbus_queue_msg_t *)pvPortMalloc(sizeof(modbus_queue_msg_t));
-  modbus_queue_msg_t *pxQueueRsp;
+  for (;;)
+  {
+    /* Wait for a client to connect. */
+    s = modbus_tcp_accept(ctx, &s);
+    configASSERT(s != FREERTOS_INVALID_SOCKET);
 
-  /* Create the task prvCriticalSectionTask */
-  xTaskCreate( prvCriticalSectionTask,
+    /* Spawn a task to handle the connection. */
+    xTaskCreate(prvServerConnectionInstance, /* The function that implements the task. */
+              "server_instance",             /* The text name assigned to the task - for debug only as it is not used by the kernel. */
+              configMINIMAL_STACK_SIZE * 2U, /* The size of the stack to allocate to the task. */
+              NULL,                          /* The parameter passed to the task - not used in this case. */
+              mainSERVER_TASK_PRIORITY,      /* The priority assigned to the task. */
+              NULL);                         /* The task handle is not required, so NULL is passed. */
+
+    /* TODO: Handle closing a connection? */
+  }
+}
+
+/*-----------------------------------------------------------*/
+
+static void prvServerConnectionInstance(void *pvParameters)
+{
+    int rc;
+    char *pcModbusFunctionName;
+
+    /* buffers for comms with libmodbus */
+    uint8_t *req = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
+    int req_length = 0;
+    uint8_t *rsp = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
+    int rsp_length = 0;
+
+    /* queues for comms with prvCriticalSectionTask */
+    queue_msg_t *pxQueueReq = (queue_msg_t *)pvPortMalloc(sizeof(queue_msg_t));
+    queue_msg_t *pxQueueRsp;
+
+    /* Create the task prvCriticalSectionTask */
+    xTaskCreate( prvCriticalSectionTask,
           "critical",
           configMINIMAL_STACK_SIZE * 2U,
           NULL,
           prvCRITICAL_SECTION_TASK_PRIORITY,
           NULL);
 
-  for (;;)
-  {
-    /* Wait until something arrives in the queue - this task will block
-    indefinitely provided INCLUDE_vTaskSuspend is set to 1 in
-    FreeRTOSConfig.h. */
-    req_length = modbus_receive(ctx, req);
+	if (req != NULL && rsp != NULL)
+	{
+        for (;;)
+        {
+            /* TODO: Check if the socket is connected.
+             * This either requires passing the socket to the task or creating a function
+             * in libmodbus (preferred) */
+            req_length = modbus_receive(ctx, req);
+            if(req_length == -1) {
+                /* TODO: Make this pause for some delay */
+                continue;
+            }
 
 #ifndef NDEBUG
-    print_shim_info("modbus_server", __FUNCTION__);
-    printf("SERVER:\tReceived request\r\n");
+            print_shim_info("modbus_server", __FUNCTION__);
+            printf("SERVER:\tReceived request\r\n");
 #endif
 
-    /* get the modbus function name from the request */
-    pcModbusFunctionName = modbus_get_function_name(ctx, req);
+            /* get the modbus function name from the request */
+            pcModbusFunctionName = modbus_get_function_name(ctx, req);
 
 #if defined(MICROBENCHMARK)
-    /* discard MICROBENCHMARK_DISCARD runs to ensure quiescence */
-    for (int i = 0; i < MICROBENCHMARK_DISCARD; ++i)
-    {
-        printf(". ");
-        rc = prvCriticalSectionWrapper(req, req_length, rsp, &rsp_length);
-        configASSERT(rc != -1);
+            /* discard MICROBENCHMARK_DISCARD runs to ensure quiescence */
+            for (int i = 0; i < MICROBENCHMARK_DISCARD; ++i)
+            {
+                printf(". ");
+                rc = prvCriticalSectionWrapper(req, req_length, rsp, &rsp_length);
+                configASSERT(rc != -1);
 
-        xMicrobenchmarkSample(pcModbusFunctionName, pdFALSE);
-    }
+                xMicrobenchmarkSample(pcModbusFunctionName, pdFALSE);
+            }
 
-    /* perform MICROBENCHMARK_ITERATIONS runs of the critical section */
-    for (int i = 0; i < MICROBENCHMARK_ITERATIONS; ++i)
-    {
-        printf(". ");
-        rc = prvCriticalSectionWrapper(req, req_length, rsp, &rsp_length);
-        configASSERT(rc != -1);
+        /* perform MICROBENCHMARK_ITERATIONS runs of the critical section */
+            for (int i = 0; i < MICROBENCHMARK_ITERATIONS; ++i)
+            {
+                printf(". ");
+                rc = prvCriticalSectionWrapper(req, req_length, rsp, &rsp_length);
+                configASSERT(rc != -1);
 
-        xMicrobenchmarkSample(pcModbusFunctionName, pdTRUE);
-    }
+                xMicrobenchmarkSample(pcModbusFunctionName, pdTRUE);
+            }
 #else
-    rc = prvCriticalSectionWrapper(req, req_length, rsp, &rsp_length);
-    configASSERT(rc != -1);
+            rc = prvCriticalSectionWrapper(req, req_length, rsp, &rsp_length);
+            configASSERT(rc != -1);
 #endif
 
 #ifndef NDEBUG
-    print_shim_info("modbus_server", __FUNCTION__);
-    printf("SERVER: Sending response\r\n");
+            print_shim_info("modbus_server", __FUNCTION__);
+            printf("SERVER: Sending response\r\n");
 #endif
 
-    rc = modbus_reply(ctx, rsp, rsp_length);
-    configASSERT(rc != -1);
-  }
+            rc = modbus_reply(ctx, rsp, rsp_length);
+            configASSERT(rc != -1);
+        }
+    }
 }
 
 /*-----------------------------------------------------------*/
@@ -280,8 +312,8 @@ static int prvCriticalSectionWrapper(const uint8_t *req, const int req_length,
         uint8_t *rsp, int *rsp_length)
 {
     BaseType_t xReturned;
-    modbus_queue_msg_t *pxQueueReq = (modbus_queue_msg_t *)pvPortMalloc(sizeof(modbus_queue_msg_t));
-    modbus_queue_msg_t *pxQueueRsp;
+    queue_msg_t *pxQueueReq = (queue_msg_t *)pvPortMalloc(sizeof(queue_msg_t));
+    queue_msg_t *pxQueueRsp;
 
     /* queue the request
      *
@@ -308,11 +340,11 @@ static void prvCriticalSectionTask(void *pvParameters)
     int rc;
     BaseType_t xReturned;
 
-    modbus_queue_msg_t *pxQueueReq;
+    queue_msg_t *pxQueueReq;
     uint8_t *req;
     int req_length = 0;
 
-    modbus_queue_msg_t *pxQueueRsp = (modbus_queue_msg_t *)pvPortMalloc(sizeof(modbus_queue_msg_t));
+    queue_msg_t *pxQueueRsp = (queue_msg_t *)pvPortMalloc(sizeof(queue_msg_t));
     uint8_t *rsp = (uint8_t *)pvPortMalloc(MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
     int rsp_length = 0;
 

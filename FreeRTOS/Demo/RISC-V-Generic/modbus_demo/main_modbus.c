@@ -64,6 +64,10 @@
 #include "task.h"
 #include "queue.h"
 
+/* FreeRTOS+TCP includes. */
+#include "FreeRTOS_IP.h"
+#include "FreeRTOS_Sockets.h"
+
 /* Modbus includes. */
 #include <modbus/modbus.h>
 #include <modbus/modbus-helpers.h>
@@ -85,92 +89,173 @@
 
 /*-----------------------------------------------------------*/
 
-/*
- * Called by main when mainDEMO_TYPE is set to 42 in
- * main.c.
- */
-void main_modbus(void);
+/* The default IP and MAC address used by the demo.  The address configuration
+defined here will be used if ipconfigUSE_DHCP is 0, or if ipconfigUSE_DHCP is
+1 but a DHCP server could not be contacted.  See the online documentation for
+more information. */
+static const uint8_t ucIPAddress[ 4 ] = { configIP_ADDR0, configIP_ADDR1, configIP_ADDR2, configIP_ADDR3 };
+static const uint8_t ucNetMask[ 4 ] = { configNET_MASK0, configNET_MASK1, configNET_MASK2, configNET_MASK3 };
+static const uint8_t ucGatewayAddress[ 4 ] = { configGATEWAY_ADDR0, configGATEWAY_ADDR1, configGATEWAY_ADDR2, configGATEWAY_ADDR3 };
+static const uint8_t ucDNSServerAddress[ 4 ] = { configDNS_SERVER_ADDR0, configDNS_SERVER_ADDR1, configDNS_SERVER_ADDR2, configDNS_SERVER_ADDR3 };
 
-/*-----------------------------------------------------------*/
-
-/* The queue used to communicate requests from client to server. */
-QueueHandle_t xQueueClientServer;
-
-/* The queue used to communicate responses from server to client. */
-QueueHandle_t xQueueServerClient;
-
-#if defined(MACAROONS_LAYER)
-/* The queue used to communicate Macaroons from client to server. */
-QueueHandle_t xQueueClientServerMacaroons;
-
-/* The queue used to communicate Macaroons from server to client. */
-QueueHandle_t xQueueServerClientMacaroons;
-#endif
+/* Default MAC address configuration.  The demo creates a virtual network
+connection that uses this MAC address by accessing the raw Ethernet data
+to and from a real network connection on the host PC.  See the
+configNETWORK_INTERFACE_TO_USE definition for information on how to configure
+the real network connection to use. */
+const uint8_t ucMACAddress[ 6 ] = { configMAC_ADDR0, configMAC_ADDR1, configMAC_ADDR2, configMAC_ADDR3, configMAC_ADDR4, configMAC_ADDR5 };
 
 /*-----------------------------------------------------------*/
 
 void main_modbus(void)
 {
-  /* Create the request queue. Sized to hold one modbus_queue_msg_t* */
-  xQueueClientServer = xQueueCreate(mainQUEUE_LENGTH, sizeof(modbus_queue_msg_t *));
 
-  /* Create the response queue. Sized to hold one modbus_queue_msg_t* */
-  xQueueServerClient = xQueueCreate(mainQUEUE_LENGTH, sizeof(modbus_queue_msg_t *));
+    /* modbus port */
+    int port = 502;
 
-#if defined(MACAROONS_LAYER)
-  /* Create the request queue. Sized to hold a macaroons_queue_msg_t*, which is a serialised macaroon and it's length */
-  xQueueClientServerMacaroons = xQueueCreate(MACAROONS_QUEUE_LENGTH, sizeof(macaroons_queue_msg_t *));
+    /* modbus ip address:
+     * extract this from the ucIPAddress array defined above */
+    uint8_t *ip = (uint8_t *)pvPortMalloc(16 * sizeof(uint8_t));
+    uint32_t temp = FreeRTOS_inet_addr_quick(ucIPAddress[0], ucIPAddress[1], ucIPAddress[2], ucIPAddress[3]);
+    FreeRTOS_inet_ntoa(temp, ip);
 
-  /* Create the response queue. Sized to hold a macaroons_queue_msg_t*, which is a serialised macaroon and it's length */
-  xQueueServerClientMacaroons = xQueueCreate(MACAROONS_QUEUE_LENGTH, sizeof(macaroons_queue_msg_t *));
-#endif
+    /* Initialise the network interface.
+     * ***NOTE*** Tasks that use the network are created in the network event hook
+     * when th e network is connected and ready for use (see the definition of
+     * vApplicationIPNetworkEventHook() below).  The address values passed in here
+     * are used if ipconfigUSE_DHCP is set to 0, or if ipconfigUSE_DHCP is set to 1
+     * but a DHCP server cannot be	contacted. */
+    FreeRTOS_debug_printf( ( "FreeRTOS_IPInit\n" ) );
+    FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
 
-  /* modbus connection variables */
-  char *ip = "127.0.0.1";
-  int port = 1052;
+    /* Initialise the server and client */
+    FreeRTOS_debug_printf( ( "vServerInitialization\n" ) );
+    vServerInitialization(ip, port);
+    /* FreeRTOS_debug_printf( ( "vClientInitialization\n" ) ); */
+    /* vClientInitialization(ip, port); */
 
-  if (xQueueClientServer == NULL || xQueueServerClient == NULL)
-    _exit(0);
+    /* Start the tasks and timer running. */
+    /* vTaskStartScheduler(); */
 
-#if defined(MACAROONS_LAYER)
-  if (xQueueClientServerMacaroons == NULL || xQueueServerClientMacaroons == NULL)
-      _exit(0);
-#endif
+    /* If all is well, the scheduler will now be running, and the following
+    line will never be reached.  If the following line does execute, then
+    there was insufficient FreeRTOS heap memory available for the Idle and/or
+    timer tasks to be created.  See the memory management section on the
+    FreeRTOS web site for more details on the FreeRTOS heap
+    http://www.freertos.org/a00111.html. */
+    /* for (;;) */
+    /* ; */
+}
 
+/*-----------------------------------------------------------*/
 
-  /* Initialise the server and client */
-  vServerInitialization(ip, port, xQueueClientServer, xQueueServerClient);
-  vClientInitialization(ip, port, xQueueClientServer, xQueueServerClient);
+/* Called by FreeRTOS+TCP when the network connects or disconnects.  Disconnect
+events are only received if implemented in the MAC driver. */
+void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent )
+{
+    uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
+    char cBuffer[ 16 ];
+    static BaseType_t xTasksAlreadyCreated = pdFALSE;
 
-  /*
-    * Start the client and server tasks as described in the comments at the top of this
-    * file.
-    */
-  xTaskCreate(vClientTask,                 /* The function that implements the task. */
-              "Client",                      /* The text name assigned to the task - for debug only as it is not used by the kernel. */
-              configMINIMAL_STACK_SIZE * 2U, /* The size of the stack to allocate to the task. */
-              NULL,                          /* The parameter passed to the task - not used in this case. */
-              mainCLIENT_TASK_PRIORITY,      /* The priority assigned to the task. */
-              NULL);                         /* The task handle is not required, so NULL is passed. */
+	/* If the network has just come up...*/
+	if( eNetworkEvent == eNetworkUp )
+	{
+		/* Create the tasks that use the IP stack if they have not already been
+		created. */
+		if( xTasksAlreadyCreated == pdFALSE )
+		{
+            /*
+            * Start the client and server tasks as described in the comments at the top of this
+            * file.
+            */
+            /* xTaskCreate(vClientTask,                 /1* The function that implements the task. *1/ */
+            /*           "Client",                      /1* The text name assigned to the task - for debug only as it is not used by the kernel. *1/ */
+            /*           configMINIMAL_STACK_SIZE * 2U, /1* The size of the stack to allocate to the task. *1/ */
+            /*           NULL,                          /1* The parameter passed to the task - not used in this case. *1/ */
+            /*           mainCLIENT_TASK_PRIORITY,      /1* The priority assigned to the task. *1/ */
+            /*           NULL);                         /1* The task handle is not required, so NULL is passed. *1/ */
 
-  xTaskCreate(vServerTask,                 /* The function that implements the task. */
-              "Server",                      /* The text name assigned to the task - for debug only as it is not used by the kernel. */
-              configMINIMAL_STACK_SIZE * 2U, /* The size of the stack to allocate to the task. */
-              NULL,                          /* The parameter passed to the task - not used in this case. */
-              mainSERVER_TASK_PRIORITY,      /* The priority assigned to the task. */
-              NULL);                         /* The task handle is not required, so NULL is passed. */
+            xTaskCreate(vServerTask,                 /* The function that implements the task. */
+                      "Server",                      /* The text name assigned to the task - for debug only as it is not used by the kernel. */
+                      configMINIMAL_STACK_SIZE * 2U, /* The size of the stack to allocate to the task. */
+                      NULL,                          /* The parameter passed to the task - not used in this case. */
+                      mainSERVER_TASK_PRIORITY,      /* The priority assigned to the task. */
+                      NULL);                         /* The task handle is not required, so NULL is passed. */
 
-  /* Start the tasks and timer running. */
-  vTaskStartScheduler();
+            xTasksAlreadyCreated = pdTRUE;
+        }
 
-  /* If all is well, the scheduler will now be running, and the following
-  line will never be reached.  If the following line does execute, then
-  there was insufficient FreeRTOS heap memory available for the Idle and/or
-  timer tasks to be created.  See the memory management section on the
-  FreeRTOS web site for more details on the FreeRTOS heap
-  http://www.freertos.org/a00111.html. */
-  for (;;)
-    ;
+		/* Print out the network configuration, which may have come from a DHCP
+		server. */
+		FreeRTOS_GetAddressConfiguration( &ulIPAddress, &ulNetMask, &ulGatewayAddress, &ulDNSServerAddress );
+		FreeRTOS_inet_ntoa( ulIPAddress, cBuffer );
+		FreeRTOS_printf( ( "\r\n\r\nIP Address: %s\r\n", cBuffer ) );
+
+		FreeRTOS_inet_ntoa( ulNetMask, cBuffer );
+		FreeRTOS_printf( ( "Subnet Mask: %s\r\n", cBuffer ) );
+
+		FreeRTOS_inet_ntoa( ulGatewayAddress, cBuffer );
+		FreeRTOS_printf( ( "Gateway Address: %s\r\n", cBuffer ) );
+
+		FreeRTOS_inet_ntoa( ulDNSServerAddress, cBuffer );
+		FreeRTOS_printf( ( "DNS Server Address: %s\r\n\r\n\r\n", cBuffer ) );
+	}
+}
+
+/*-----------------------------------------------------------*/
+
+/* Called automatically when a reply to an outgoing ping is received. */
+void vApplicationPingReplyHook( ePingReplyStatus_t eStatus, uint16_t usIdentifier )
+{
+static const char *pcSuccess = "Ping reply received - ";
+static const char *pcInvalidChecksum = "Ping reply received with invalid checksum - ";
+static const char *pcInvalidData = "Ping reply received with invalid data - ";
+
+	switch( eStatus )
+	{
+		case eSuccess	:
+			FreeRTOS_printf( ( pcSuccess ) );
+			break;
+
+		case eInvalidChecksum :
+			FreeRTOS_printf( ( pcInvalidChecksum ) );
+			break;
+
+		case eInvalidData :
+			FreeRTOS_printf( ( pcInvalidData ) );
+			break;
+
+		default :
+			/* It is not possible to get here as all enums have their own
+			case. */
+			break;
+	}
+
+	FreeRTOS_printf( ( "identifier %d\r\n", ( int ) usIdentifier ) );
+
+	/* Prevent compiler warnings in case FreeRTOS_debug_printf() is not defined. */
+	( void ) usIdentifier;
+}
+
+/*-----------------------------------------------------------*/
+
+/*
+ * Callback that provides the inputs necessary to generate a randomized TCP
+ * Initial Sequence Number per RFC 6528.  THIS IS ONLY A DUMMY IMPLEMENTATION
+ * THAT RETURNS A PSEUDO RANDOM NUMBER SO IS NOT INTENDED FOR USE IN PRODUCTION
+ * SYSTEMS.
+ */
+extern uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress,
+	uint16_t usSourcePort,
+	uint32_t ulDestinationAddress,
+	uint16_t usDestinationPort)
+{
+	(void)ulSourceAddress;
+	(void)usSourcePort;
+	(void)ulDestinationAddress;
+	(void)usDestinationPort;
+
+	return uxRand();
 }
 
 /*-----------------------------------------------------------*/
