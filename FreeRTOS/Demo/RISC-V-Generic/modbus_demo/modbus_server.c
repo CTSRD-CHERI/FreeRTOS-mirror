@@ -54,13 +54,13 @@
 #include "modbus_server.h"
 
 /* Modbus CHERI includes */
-#if defined(CHERI_LAYER)
-#include "modbus_cheri.h"
+#if defined(MODBUS_OBJECT_CAPS)
+#include "modbus_object_caps.h"
 #endif
 
 /* Modbus Macaroons includes */
-#if defined(MACAROONS_LAYER)
-#include "modbus_macaroons.h"
+#if defined(MODBUS_NETWORK_CAPS)
+#include "modbus_network_caps.h"
 #endif
 
 /* Microbenchmark includes */
@@ -123,8 +123,8 @@ void vServerInitialization(char *ip, int port)
 #endif
 
     /* initialise state (mb_mapping) */
-#if defined(CHERI_LAYER) && !defined(CHERI_LAYER_STUBS)
-    mb_mapping = modbus_mapping_new_start_address_cheri(
+#if defined(MODBUS_OBJECT_CAPS) && !defined(MODBUS_OBJECT_CAPS_STUB)
+    mb_mapping = modbus_mapping_new_start_address_object_caps(
             ctx,
             UT_BITS_ADDRESS, UT_BITS_NB,
             UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB,
@@ -163,13 +163,13 @@ void vServerInitialization(char *ip, int port)
         mb_mapping->tab_input_registers[i] = UT_INPUT_REGISTERS_TAB[i];
     }
 
-#if defined(MACAROONS_LAYER)
+#if defined(MODBUS_NETWORK_CAPS)
     /* Initialise Macaroon */
-    int rc;
+    int rc = -1;
     char *key = "a bad secret";
     char *id = "id for a bad secret";
     char *location = "https://www.modbus.com/macaroons/";
-    rc = initialise_server_macaroon(ctx, location, key, id);
+    rc = initialise_server_network_caps(ctx, location, key, id);
     if (rc == -1) {
         fprintf(stderr, "Failed to initialise server macaroon\n");
         modbus_free(ctx);
@@ -398,28 +398,27 @@ static void prvCriticalSectionTask(void *pvParameters)
         taskENTER_CRITICAL();
 
         /**
-         * if CHERI then perform the CHERI layer of preprocessing of the state
-         * if MACAROONS then perform the Macaroons layer of preprocessing of the state
+         * Perform preprocessing for object or network capabilities
          * then perform the normal processing
          * NB order matters here:
          * - First reduce permissions on state
-         * - Then verify Macaroons, if appropriate
+         * - Then verify the network capability, if appropriate
          * - Then perform the normal processing
-         * NB The Basic configuration, which bypasses both of these layers can still
+         * NB A configuration without object or network capabilities can still
          * be compiled for a CHERI system, it just wont restrict the state before
          * processing the request.
          * */
-#if defined(CHERI_LAYER_STUBS)
+#if defined(MODBUS_OBJECT_CAPS_STUB)
         /* this is only used to evaluate the overhead of calling a function */
-        rc = modbus_preprocess_request_cheri_baseline(ctx, req, mb_mapping);
+        rc = modbus_preprocess_request_object_caps_stub(ctx, req, mb_mapping);
         configASSERT(rc != -1);
-#elif defined(CHERI_LAYER)
-        rc = modbus_preprocess_request_cheri(ctx, req, mb_mapping);
+#elif defined(MODBUS_OBJECT_CAPS)
+        rc = modbus_preprocess_request_object_caps(ctx, req, mb_mapping);
         configASSERT(rc != -1);
 #endif
 
-#if defined(MACAROONS_LAYER)
-        rc = modbus_preprocess_request_macaroons(ctx, req, mb_mapping);
+#if defined(MODBUS_NETWORK_CAPS)
+        rc = modbus_preprocess_request_network_caps(ctx, req, mb_mapping);
         configASSERT(rc != -1);
 #endif
 

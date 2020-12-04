@@ -54,8 +54,8 @@
 #include "modbus_client.h"
 
 /* Modbus Macaroons includes */
-#if defined(MACAROONS_LAYER)
-#include "modbus_macaroons.h"
+#if defined(MODBUS_NETWORK_CAPS)
+#include "modbus_network_caps.h"
 #endif
 
 /* Microbenchmark includes */
@@ -142,13 +142,15 @@ void vClientTask(void *pvParameters)
     rc = modbus_set_response_timeout(ctx, 1000, 0);
 #endif
 
+    printf("----------\n");
     printf("BEGIN_TEST\n");
+    printf("----------\n");
 
     /**************
      * STRING TESTS
      *************/
 
-#if defined(MACAROONS_LAYER)
+#if defined(MODBUS_NETWORK_CAPS)
     /* when using macaroons, the server will initialise a macaroon and store
      * it in mb_mapping->tab_string, so the client starts by reading that
      * string and initialising it's own macaroon.
@@ -160,7 +162,7 @@ void vClientTask(void *pvParameters)
     configASSERT(rc != -1);
     //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
-    rc = initialise_client_macaroon(ctx, (char *)tab_rp_string, rc);
+    rc = initialise_client_network_caps(ctx, (char *)tab_rp_string, rc);
     configASSERT(rc != -1);
     //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 #endif
@@ -196,8 +198,8 @@ void vClientTask(void *pvParameters)
     printf("\nWRITE_SINGLE_COIL\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_write_bit_macaroons(ctx, UT_BITS_ADDRESS, ON);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_bit_network_caps(ctx, UT_BITS_ADDRESS, ON);
 #else
     rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
 #endif
@@ -210,8 +212,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_SINGLE_COIL\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_bits_macaroons(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_bits_network_caps(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
 #else
     rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
 #endif
@@ -227,8 +229,8 @@ void vClientTask(void *pvParameters)
         uint8_t tab_value[UT_BITS_NB];
         modbus_set_bits_from_bytes(tab_value, 0, UT_BITS_NB, UT_BITS_TAB);
 
-#if defined(MACAROONS_LAYER)
-        rc = modbus_write_bits_macaroons(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
+#if defined(MODBUS_NETWORK_CAPS)
+        rc = modbus_write_bits_network_caps(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
 #else
         rc = modbus_write_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value);
 #endif
@@ -242,8 +244,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_MULTIPLE_COILS\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_bits_macaroons(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_bits_network_caps(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
 #else
     rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
 #endif
@@ -260,8 +262,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_INPUT_BITS\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_input_bits_macaroons(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_input_bits_network_caps(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
 #else
     rc = modbus_read_input_bits(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits);
 #endif
@@ -293,8 +295,8 @@ void vClientTask(void *pvParameters)
     printf("\nWRITE_SINGLE_REGISTER\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_write_register_macaroons(ctx, UT_REGISTERS_ADDRESS, 0x1234);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0x1234);
 #else
     rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x1234);
 #endif
@@ -307,8 +309,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_SINGLE_REGISTER\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_registers_macaroons(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
 #else
     rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
 #endif
@@ -322,8 +324,8 @@ void vClientTask(void *pvParameters)
     printf("\nWRITE_MULTIPLE_REGISTERS\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_write_registers_macaroons(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
 #else
     rc = modbus_write_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
 #endif
@@ -336,8 +338,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_MULTIPLE_REGISTERS\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_registers_macaroons(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
 #else
     rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers);
 #endif
@@ -356,8 +358,8 @@ void vClientTask(void *pvParameters)
     nb_points = (UT_REGISTERS_NB > UT_INPUT_REGISTERS_NB) ? UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
     memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_write_and_read_registers_macaroons(ctx,
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_and_read_registers_network_caps(ctx,
             UT_REGISTERS_ADDRESS + 1,
             UT_REGISTERS_NB - 1,
             tab_rp_registers,
@@ -391,8 +393,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_INPUT_REGISTERS\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_input_registers_macaroons(ctx, UT_INPUT_REGISTERS_ADDRESS,
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_input_registers_network_caps(ctx, UT_INPUT_REGISTERS_ADDRESS,
             UT_INPUT_REGISTERS_NB, tab_rp_registers);
 #else
     rc = modbus_read_input_registers(ctx, UT_INPUT_REGISTERS_ADDRESS,
@@ -415,8 +417,8 @@ void vClientTask(void *pvParameters)
     printf("\nWRITE_SINGLE_REGISTER\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_write_register_macaroons(ctx, UT_REGISTERS_ADDRESS, 0x12);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0x12);
 #else
     rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
 #endif
@@ -429,8 +431,8 @@ void vClientTask(void *pvParameters)
     printf("\nMASK_WRITE_SINGLE_REGISTER\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_mask_write_register_macaroons(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_mask_write_register_network_caps(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
 #else
     rc = modbus_mask_write_register(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
 #endif
@@ -443,8 +445,8 @@ void vClientTask(void *pvParameters)
     printf("\nREAD_SINGLE_REGISTER\n");
 #endif
 
-#if defined(MACAROONS_LAYER)
-    rc = modbus_read_registers_macaroons(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+#if defined(MODBUS_NETWORK_CAPS)
+    rc = modbus_read_registers_network_caps(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
 #else
     rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
 #endif
@@ -457,7 +459,9 @@ void vClientTask(void *pvParameters)
     vPrintMicrobenchmarkSamples();
 #endif
 
+    printf("--------\n");
     printf("END_TEST\n");
+    printf("--------\n");
 
     prvClientTaskShutdown();
 }
@@ -479,13 +483,11 @@ static void prvClientTaskShutdown(void) {
     vPortFree(tab_rp_registers);
     vPortFree(tab_rp_string);
 
-#if defined(MICROBENCHMARK)
     /* kill FreeRTOS execution */
     _exit(0);
-#else
+
     /* delete this task */
-    vTaskDelete(NULL);
-#endif
+    /* vTaskDelete(NULL); */
 }
 
 /*-----------------------------------------------------------*/
