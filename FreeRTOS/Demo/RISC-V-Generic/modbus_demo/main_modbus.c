@@ -25,34 +25,6 @@
  * 1 tab == 4 spaces!
  */
 
-/******************************************************************************
- * NOTE 1:  This project provides a demo of the Modbus industrial protocol.
- *
- * NOTE 2:  This file only contains the source code that is specific to the
- * basic demo.  Generic functions, such FreeRTOS hook functions, and functions
- * required to configure the hardware are defined in main.c.
- ******************************************************************************
- *
- * main_modbus() runs a demo application using the modbus protocol.
- *
- * It creates a server and client tasks that communicate using queue.  The server
- * task spins up a separate task for critical processing and communicates
- * with the critical processing task via a queue as well.
- *
- * The client generates a request, which is sent to the server.  The server
- * sends the request to the critical processing task, which executes the request
- * and constructs a reply, which it returns to the server.  The server send
- * the reply to the client.
- *
- * The demo is constructed to be compiled with and without CHERI capabilities.
- *
- * The demo is constructed to incorporate object capabilities (CHERI_LAYER)
- * and network capabilities (MACAROONS_LAYER).
- *
- * The demo is constructed to support microbenchmarking of the
- * critical processing task.
- * */
-
 /* Standard includes. */
 #include <stdio.h>
 #include <string.h>
@@ -68,24 +40,10 @@
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 
-/* Modbus includes. */
-#include <modbus/modbus.h>
-#include <modbus/modbus-helpers.h>
-
 /* Demo includes */
 #include "modbus_demo.h"
 #include "modbus_server.h"
 #include "modbus_client.h"
-
-#if defined(CHERI_LAYER)
-/* Modbus CHERI includes */
-#include "modbus_cheri.h"
-#endif
-
-#if defined(MACAROONS_LAYER)
-/* Macaroons includes */
-#include "modbus_macaroons.h"
-#endif
 
 /*-----------------------------------------------------------*/
 
@@ -153,8 +111,7 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent )
             vClientInitialization(localhost_ip, modbus_port_mapped);
 
             /*
-            * Start the client and server tasks as described in the comments at the top of this
-            * file.
+            * Start the client and server tasks
             */
             xTaskCreate(vClientTask,                 /* The function that implements the task. */
                       "Client",                      /* The text name assigned to the task - for debug only as it is not used by the kernel. */
