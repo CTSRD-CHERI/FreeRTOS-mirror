@@ -102,6 +102,21 @@ def build(bld):
                 source=[
                     'main_modbus.c',
                     'modbus_server.c',
+                    'modbus_client.c'
+                ],
+                use=[
+                    "freertos_core",
+                    "freertos_bsp",
+                    "modbus",
+                    "modbus_object_caps"
+                ],
+                defines=bld.env.DEFINES + ['MODBUS_OBJECT_CAPS_STUB=1'],
+                target="modbus_demo_object_caps_stub")
+
+        bld.stlib(features=['c'],
+                source=[
+                    'main_modbus.c',
+                    'modbus_server.c',
                     'modbus_client.c',
                     'microbenchmark.c'
                 ],
@@ -117,6 +132,26 @@ def build(bld):
                     'MICROBENCHMARK=1'
                 ],
                 target="modbus_demo_object_caps_bench")
+
+        bld.stlib(features=['c'],
+                source=[
+                    'main_modbus.c',
+                    'modbus_server.c',
+                    'modbus_client.c',
+                    'microbenchmark.c'
+                ],
+                use=[
+                    "freertos_core",
+                    "freertos_bsp",
+                    "modbus",
+                    "modbus_object_caps"
+                ],
+                defines=bld.env.DEFINES + [
+                    'NDEBUG=1',
+                    'MODBUS_OBJECT_CAPS_STUB=1',
+                    'MICROBENCHMARK=1'
+                ],
+                target="modbus_demo_object_caps_stub_bench")
 
     bld.stlib(features=['c'],
             source=[
