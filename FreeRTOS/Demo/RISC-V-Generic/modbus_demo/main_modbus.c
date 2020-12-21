@@ -83,7 +83,7 @@ void main_modbus(void)
      * vApplicationIPNetworkEventHook() below).  The address values passed in here
      * are used if ipconfigUSE_DHCP is set to 0, or if ipconfigUSE_DHCP is set to 1
      * but a DHCP server cannot be	contacted. */
-    FreeRTOS_debug_printf( ( "FreeRTOS_IPInit\n" ) );
+    FreeRTOS_debug_printf( ( "FreeRTOS_IPInit\r\n" ) );
     FreeRTOS_IPInit( ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress );
 }
 
@@ -105,10 +105,14 @@ void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent )
 		if( xTasksAlreadyCreated == pdFALSE )
 		{
             /* Initialise the server and client */
-            FreeRTOS_debug_printf( ( "vServerInitialization\n" ) );
+            FreeRTOS_debug_printf( ( "vServerInitialization\r\n" ) );
             vServerInitialization(localhost_ip, modbus_port);
-            FreeRTOS_debug_printf( ( "vClientInitialization\n" ) );
+            FreeRTOS_debug_printf( ( "vClientInitialization\r\n" ) );
+#if defined(PLATFORM_FETT)
+            vClientInitialization(localhost_ip, modbus_port);
+#else
             vClientInitialization(localhost_ip, modbus_port_mapped);
+#endif
 
             /*
             * Start the client and server tasks

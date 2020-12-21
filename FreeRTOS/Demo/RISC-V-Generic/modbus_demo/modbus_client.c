@@ -87,7 +87,7 @@ void vClientInitialization(char *ip, int port)
     ctx = modbus_new_tcp(ip, port);
     if (ctx == NULL)
     {
-        fprintf(stderr, "Failed to allocate ctx: %s\n",
+        fprintf(stderr, "Failed to allocate ctx: %s\r\n",
                 modbus_strerror(errno));
         prvClientTaskShutdown();
     }
@@ -103,7 +103,7 @@ void vClientInitialization(char *ip, int port)
 
 void vClientTask(void *pvParameters)
 {
-    FreeRTOS_debug_printf( ("Enter client task\n") );
+    FreeRTOS_debug_printf( ("Enter client task\r\n") );
 
     TickType_t xNextWakeTime;
     int rc;
@@ -117,7 +117,7 @@ void vClientTask(void *pvParameters)
 
     /* Connect to the modbus server */
     if(modbus_connect(ctx) == -1) {
-        fprintf(stderr, "Connection failed\n");
+        fprintf(stderr, "Connection failed\r\n");
         prvClientTaskShutdown();
     }
 
@@ -142,9 +142,9 @@ void vClientTask(void *pvParameters)
     rc = modbus_set_response_timeout(ctx, 1000, 0);
 #endif
 
-    printf("----------\n");
-    printf("BEGIN_TEST\n");
-    printf("----------\n");
+    printf("----------\r\n");
+    printf("BEGIN_TEST\r\n");
+    printf("----------\r\n");
 
     /**************
      * STRING TESTS
@@ -160,33 +160,29 @@ void vClientTask(void *pvParameters)
     memset(tab_rp_string, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
     rc = modbus_read_string(ctx, tab_rp_string);
     configASSERT(rc != -1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     rc = initialise_client_network_caps(ctx, (char *)tab_rp_string, rc);
     configASSERT(rc != -1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 #endif
 
     /* WRITE_STRING */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_STRING\n");
+    printf("\nWRITE_STRING\r\n");
 #endif
 
     rc = modbus_write_string(ctx, tab_rp_string, nb_chars);
     configASSERT(rc != -1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* READ_STRING */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_STRING\n");
+    printf("\nREAD_STRING\r\n");
 #endif
 
     memset(tab_rp_string, 0, MODBUS_MAX_STRING_LENGTH * sizeof(uint8_t));
     rc = modbus_read_string(ctx, tab_rp_string);
     configASSERT(rc != -1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /************
      * COIL TESTS
@@ -195,7 +191,7 @@ void vClientTask(void *pvParameters)
     /* WRITE_SINGLE_COIL */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_SINGLE_COIL\n");
+    printf("\nWRITE_SINGLE_COIL\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -204,12 +200,11 @@ void vClientTask(void *pvParameters)
     rc = modbus_write_bit(ctx, UT_BITS_ADDRESS, ON);
 #endif
     configASSERT(rc == 1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* READ_SINGLE_COIL */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_SINGLE_COIL\n");
+    printf("\nREAD_SINGLE_COIL\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -218,12 +213,11 @@ void vClientTask(void *pvParameters)
     rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, 1, tab_rp_bits);
 #endif
     configASSERT(rc == 1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* WRITE_MULTIPLE_COILS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_MULTIPLE_COILS\n");
+    printf("\nWRITE_MULTIPLE_COILS\r\n");
 #endif
     {
         uint8_t tab_value[UT_BITS_NB];
@@ -236,12 +230,11 @@ void vClientTask(void *pvParameters)
 #endif
     }
     configASSERT(rc == UT_BITS_NB);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* READ_MULTIPLE_COILS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_MULTIPLE_COILS\n");
+    printf("\nREAD_MULTIPLE_COILS\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -250,7 +243,6 @@ void vClientTask(void *pvParameters)
     rc = modbus_read_bits(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits);
 #endif
     configASSERT(rc == UT_BITS_NB);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /**********************
      * DISCRETE INPUT TESTS
@@ -259,7 +251,7 @@ void vClientTask(void *pvParameters)
     /* READ_INPUT_BITS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_INPUT_BITS\n");
+    printf("\nREAD_INPUT_BITS\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -283,7 +275,6 @@ void vClientTask(void *pvParameters)
             idx++;
         }
     }
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /************************
      * HOLDING REGISTER TESTS
@@ -292,7 +283,7 @@ void vClientTask(void *pvParameters)
     /* WRITE_SINGLE_REGISTER */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_SINGLE_REGISTER\n");
+    printf("\nWRITE_SINGLE_REGISTER\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -301,12 +292,11 @@ void vClientTask(void *pvParameters)
     rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x1234);
 #endif
     configASSERT(rc == 1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* READ_SINGLE_REGISTER */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_SINGLE_REGISTER\n");
+    printf("\nREAD_SINGLE_REGISTER\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -316,12 +306,11 @@ void vClientTask(void *pvParameters)
 #endif
     configASSERT(rc == 1);
     configASSERT(tab_rp_registers[0] == 0x1234);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* WRITE_MULTIPLE_REGISTERS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_MULTIPLE_REGISTERS\n");
+    printf("\nWRITE_MULTIPLE_REGISTERS\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -330,12 +319,11 @@ void vClientTask(void *pvParameters)
     rc = modbus_write_registers(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB);
 #endif
     configASSERT(rc == UT_REGISTERS_NB);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* READ_MULTIPLE_REGISTERS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_MULTIPLE_REGISTERS\n");
+    printf("\nREAD_MULTIPLE_REGISTERS\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -347,12 +335,11 @@ void vClientTask(void *pvParameters)
     for (int i=0; i < UT_REGISTERS_NB; i++) {
         configASSERT(tab_rp_registers[i] == UT_REGISTERS_TAB[i]);
     }
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* WRITE_AND_READ_REGISTERS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_AND_READ_REGISTERS\n");
+    printf("\nWRITE_AND_READ_REGISTERS\r\n");
 #endif
 
     nb_points = (UT_REGISTERS_NB > UT_INPUT_REGISTERS_NB) ? UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
@@ -381,7 +368,6 @@ void vClientTask(void *pvParameters)
     {
         configASSERT(tab_rp_registers[i] == 0);
     }
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /**********************
      * INPUT REGISTER TESTS
@@ -390,7 +376,7 @@ void vClientTask(void *pvParameters)
     /* READ_INPUT_REGISTERS */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_INPUT_REGISTERS\n");
+    printf("\nREAD_INPUT_REGISTERS\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -405,7 +391,6 @@ void vClientTask(void *pvParameters)
     {
         configASSERT(tab_rp_registers[i] == UT_INPUT_REGISTERS_TAB[i]);
     }
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /*****************************
      * HOLDING REGISTER MASK TESTS
@@ -414,7 +399,7 @@ void vClientTask(void *pvParameters)
     /* WRITE_SINGLE_REGISTER */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nWRITE_SINGLE_REGISTER\n");
+    printf("\nWRITE_SINGLE_REGISTER\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -423,12 +408,11 @@ void vClientTask(void *pvParameters)
     rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
 #endif
     configASSERT(rc == 1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* MASK_WRITE_SINGLE_REGISTER */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nMASK_WRITE_SINGLE_REGISTER\n");
+    printf("\nMASK_WRITE_SINGLE_REGISTER\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -437,12 +421,11 @@ void vClientTask(void *pvParameters)
     rc = modbus_mask_write_register(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25);
 #endif
     configASSERT(rc != -1);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
     /* READ_SINGLE_REGISTER */
 #ifndef NDEBUG
     print_shim_info("modbus_client", __FUNCTION__);
-    printf("\nREAD_SINGLE_REGISTER\n");
+    printf("\nREAD_SINGLE_REGISTER\r\n");
 #endif
 
 #if defined(MODBUS_NETWORK_CAPS)
@@ -452,16 +435,15 @@ void vClientTask(void *pvParameters)
 #endif
     configASSERT(rc == 1);
     configASSERT(tab_rp_registers[0] == 0x17);
-    //vTaskDelayUntil(&xNextWakeTime, modbusCLIENT_SEND_FREQUENCY_MS);
 
 #if defined(MICROBENCHMARK)
     /* print microbenchmark samples to stdout */
     vPrintMicrobenchmarkSamples();
 #endif
 
-    printf("--------\n");
-    printf("END_TEST\n");
-    printf("--------\n");
+    printf("--------\r\n");
+    printf("END_TEST\r\n");
+    printf("--------\r\n");
 
     prvClientTaskShutdown();
 }

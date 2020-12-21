@@ -110,7 +110,7 @@ void vServerInitialization(char *ip, int port)
     ctx = modbus_new_tcp(ip, port);
     if (ctx == NULL)
     {
-        fprintf(stderr, "Failed to allocate ctx: %s\n",
+        fprintf(stderr, "Failed to allocate ctx: %s\r\n",
                 modbus_strerror(errno));
         modbus_free(ctx);
         _exit(0);
@@ -141,7 +141,7 @@ void vServerInitialization(char *ip, int port)
     /* check for successful initialisation of state */
     if (mb_mapping == NULL)
     {
-        fprintf(stderr, "Failed to allocate the mapping: %s\n",
+        fprintf(stderr, "Failed to allocate the mapping: %s\r\n",
                 modbus_strerror(errno));
         modbus_free(ctx);
         _exit(0);
@@ -171,7 +171,7 @@ void vServerInitialization(char *ip, int port)
     char *location = "https://www.modbus.com/macaroons/";
     rc = initialise_server_network_caps(ctx, location, key, id);
     if (rc == -1) {
-        fprintf(stderr, "Failed to initialise server macaroon\n");
+        fprintf(stderr, "Failed to initialise server macaroon\r\n");
         modbus_free(ctx);
         _exit(0);
     }
@@ -276,7 +276,7 @@ void vServerTask(void *pvParameters)
 
                         xMicrobenchmarkSample(pcModbusFunctionName, pdTRUE);
                     }
-                    printf("\n");
+                    printf("\r\n");
 
                     /* mark modbus_write_string() as having been benchmarked */
                     if(strncmp(pcModbusFunctionName, "MODBUS_FC_WRITE_STRING", MODBUS_MAX_FUNCTION_NAME_LEN) == 0) {
