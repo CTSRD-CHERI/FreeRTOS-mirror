@@ -39,7 +39,7 @@ def configure(ctx):
 
     ctx.env.append_value('DEFINES', [
         'configPROG_ENTRY                   = main_modbus',
-        'configCUSTOM_HEAP_SIZE             = 2'
+        'configCUSTOM_HEAP_SIZE             = 8'
     ])
 
     ctx.recurse('modcap')
